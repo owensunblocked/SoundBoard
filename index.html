@@ -36,6 +36,8 @@
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 let activeSources = [];
+let buffers = {};
+let loaded = false;
 
 // speed display
 const speedSlider = document.getElementById("speed");
@@ -58,8 +60,7 @@ function createDistortion(amount) {
   return curve;
 }
 
-// preload sounds
-const buffers = {};
+// sound list
 const soundFiles = [
   "chinese-gong-meme-sound-effect.mp3",
   "airhorn.mp3",
@@ -69,18 +70,32 @@ const soundFiles = [
   "chinese-guy-rap.mp3"
 ];
 
+// preload
 async function loadSounds() {
   for (let file of soundFiles) {
-    const res = await fetch(file);
-    const arr = await res.arrayBuffer();
-    buffers[file] = await audioCtx.decodeAudioData(arr);
+    try {
+      const res = await fetch(file);
+      const arr = await res.arrayBuffer();
+      buffers[file] = await audioCtx.decodeAudioData(arr);
+    } catch (e) {
+      console.error("Failed to load:", file);
+    }
   }
+  loaded = true;
+  console.log("Sounds loaded");
 }
 loadSounds();
 
 // play
-function playSound(file) {
+async function playSound(file) {
   audioCtx.resume();
+
+  // 🔥 fallback if not loaded yet
+  if (!buffers[file]) {
+    const res = await fetch(file);
+    const arr = await res.arrayBuffer();
+    buffers[file] = await audioCtx.decodeAudioData(arr);
+  }
 
   const bassVal = document.getElementById("bass").value;
   const distVal = document.getElementById("distortion").value;
@@ -90,7 +105,6 @@ function playSound(file) {
   source.buffer = buffers[file];
   source.playbackRate.value = speedVal;
 
-  // volume control (prevents max blast)
   const gain = audioCtx.createGain();
   gain.gain.value = 0.5;
 
