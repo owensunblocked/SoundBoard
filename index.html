@@ -34,10 +34,8 @@
 
 <script>
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
 let activeSources = [];
 let buffers = {};
-let loaded = false;
 
 // speed display
 const speedSlider = document.getElementById("speed");
@@ -47,20 +45,20 @@ speedSlider.oninput = () => {
   speedValue.textContent = speedSlider.value + "x";
 };
 
-// distortion
+// 🔥 BETTER distortion (doesn't blow out instantly)
 function createDistortion(amount) {
-  let k = amount,
-      n_samples = 44100,
-      curve = new Float32Array(n_samples);
+  let k = amount * 10; // scale properly
+  let n_samples = 44100;
+  let curve = new Float32Array(n_samples);
 
   for (let i = 0; i < n_samples; i++) {
     let x = i * 2 / n_samples - 1;
-    curve[i] = (3 + k) * x / (Math.PI + k * Math.abs(x));
+    curve[i] = (1 + k) * x / (1 + k * Math.abs(x));
   }
   return curve;
 }
 
-// sound list
+// preload
 const soundFiles = [
   "chinese-gong-meme-sound-effect.mp3",
   "airhorn.mp3",
@@ -70,19 +68,12 @@ const soundFiles = [
   "chinese-guy-rap.mp3"
 ];
 
-// preload
 async function loadSounds() {
   for (let file of soundFiles) {
-    try {
-      const res = await fetch(file);
-      const arr = await res.arrayBuffer();
-      buffers[file] = await audioCtx.decodeAudioData(arr);
-    } catch (e) {
-      console.error("Failed to load:", file);
-    }
+    const res = await fetch(file);
+    const arr = await res.arrayBuffer();
+    buffers[file] = await audioCtx.decodeAudioData(arr);
   }
-  loaded = true;
-  console.log("Sounds loaded");
 }
 loadSounds();
 
@@ -90,35 +81,44 @@ loadSounds();
 async function playSound(file) {
   audioCtx.resume();
 
-  // 🔥 fallback if not loaded yet
+  // ensure loaded
   if (!buffers[file]) {
     const res = await fetch(file);
     const arr = await res.arrayBuffer();
     buffers[file] = await audioCtx.decodeAudioData(arr);
   }
 
-  const bassVal = document.getElementById("bass").value;
-  const distVal = document.getElementById("distortion").value;
-  const speedVal = document.getElementById("speed").value;
+  // 🔥 FIX: convert to numbers
+  const bassVal = parseFloat(document.getElementById("bass").value);
+  const distVal = parseFloat(document.getElementById("distortion").value) / 100;
+  const speedVal = parseFloat(document.getElementById("speed").value);
 
   const source = audioCtx.createBufferSource();
   source.buffer = buffers[file];
   source.playbackRate.value = speedVal;
 
+  // volume (prevents loud stacking)
   const gain = audioCtx.createGain();
-  gain.gain.value = 0.5;
+  gain.gain.value = 0.4;
 
+  // bass
   const bass = audioCtx.createBiquadFilter();
   bass.type = "lowshelf";
   bass.frequency.value = 200;
   bass.gain.value = bassVal;
 
-  const distortion = audioCtx.createWaveShaper();
-  distortion.curve = createDistortion(distVal);
+  // distortion (only apply if > 0)
+  let lastNode = bass;
+
+  if (distVal > 0) {
+    const distortion = audioCtx.createWaveShaper();
+    distortion.curve = createDistortion(distVal);
+    bass.connect(distortion);
+    lastNode = distortion;
+  }
 
   source.connect(bass);
-  bass.connect(distortion);
-  distortion.connect(gain);
+  lastNode.connect(gain);
   gain.connect(audioCtx.destination);
 
   source.start(0);
