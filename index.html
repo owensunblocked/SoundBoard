@@ -27,6 +27,12 @@
 
 <br><br>
 
+🔊 Volume:
+<input type="range" id="volume" min="0" max="1" step="0.01" value="0.4">
+<span id="volValue">0.4</span>
+
+<br><br>
+
 🔊 Bass:
 <input type="range" id="bass" min="0" max="30" value="0"><br><br>
 
@@ -42,15 +48,23 @@ const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 let activeSources = [];
 let buffers = {};
 
-// speed display
+// sliders
 const speedSlider = document.getElementById("speed");
 const speedValue = document.getElementById("speedValue");
 
+const volSlider = document.getElementById("volume");
+const volValue = document.getElementById("volValue");
+
+// display values
 speedSlider.oninput = () => {
   speedValue.textContent = speedSlider.value + "x";
 };
 
-// better distortion
+volSlider.oninput = () => {
+  volValue.textContent = volSlider.value;
+};
+
+// distortion
 function createDistortion(amount) {
   let k = amount * 10;
   let n_samples = 44100;
@@ -63,7 +77,7 @@ function createDistortion(amount) {
   return curve;
 }
 
-// 🔥 ALL sounds included here
+// ALL sounds
 const soundFiles = [
   "chinese-gong-meme-sound-effect.mp3",
   "airhorn.mp3",
@@ -78,7 +92,7 @@ const soundFiles = [
   "guitar-meme.mp3"
 ];
 
-// preload ALL
+// preload
 async function loadSounds() {
   for (let file of soundFiles) {
     try {
@@ -105,13 +119,14 @@ async function playSound(file) {
   const bassVal = parseFloat(document.getElementById("bass").value);
   const distVal = parseFloat(document.getElementById("distortion").value) / 100;
   const speedVal = parseFloat(document.getElementById("speed").value);
+  const volumeVal = parseFloat(document.getElementById("volume").value);
 
   const source = audioCtx.createBufferSource();
   source.buffer = buffers[file];
   source.playbackRate.value = speedVal;
 
   const gain = audioCtx.createGain();
-  gain.gain.value = 0.4;
+  gain.gain.value = volumeVal;
 
   const bass = audioCtx.createBiquadFilter();
   bass.type = "lowshelf";
