@@ -10,9 +10,15 @@
 <button onclick="playSound('chinese-gong-meme-sound-effect.mp3')">Chinese</button>
 <button onclick="playSound('airhorn.mp3')">📣 AIRHORN</button>
 <button onclick="playSound('laugh.mp3')">😂 LAUGH</button>
-<button onclick="playSound('tsb-phonk.mp3')">tsb phonk</button>
+<button onclick="playSound('tsb-phonk.mp3')">TSB PHONK</button>
 <button onclick="playSound('youre-phone-is-ringing.mp3')">YO PHONE LINGIN</button>
 <button onclick="playSound('chinese-guy-rap.mp3')">Chinese Rap</button>
+
+<br><br>
+
+<button onclick="stopAll()" style="background:red;color:white;padding:15px;font-size:16px;">
+🛑 STOP ALL
+</button>
 
 <br><br>
 
@@ -29,7 +35,9 @@
 <script>
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-// show speed number
+let activeSources = [];
+
+// speed display
 const speedSlider = document.getElementById("speed");
 const speedValue = document.getElementById("speedValue");
 
@@ -37,6 +45,7 @@ speedSlider.oninput = () => {
   speedValue.textContent = speedSlider.value + "x";
 };
 
+// distortion
 function createDistortion(amount) {
   let k = amount,
       n_samples = 44100,
@@ -49,20 +58,41 @@ function createDistortion(amount) {
   return curve;
 }
 
-async function playSound(file) {
+// preload sounds
+const buffers = {};
+const soundFiles = [
+  "chinese-gong-meme-sound-effect.mp3",
+  "airhorn.mp3",
+  "laugh.mp3",
+  "tsb-phonk.mp3",
+  "youre-phone-is-ringing.mp3",
+  "chinese-guy-rap.mp3"
+];
+
+async function loadSounds() {
+  for (let file of soundFiles) {
+    const res = await fetch(file);
+    const arr = await res.arrayBuffer();
+    buffers[file] = await audioCtx.decodeAudioData(arr);
+  }
+}
+loadSounds();
+
+// play
+function playSound(file) {
+  audioCtx.resume();
+
   const bassVal = document.getElementById("bass").value;
   const distVal = document.getElementById("distortion").value;
   const speedVal = document.getElementById("speed").value;
 
-  const response = await fetch(file);
-  const arrayBuffer = await response.arrayBuffer();
-  const buffer = await audioCtx.decodeAudioData(arrayBuffer);
-
   const source = audioCtx.createBufferSource();
-  source.buffer = buffer;
-
-  // speed (new)
+  source.buffer = buffers[file];
   source.playbackRate.value = speedVal;
+
+  // volume control (prevents max blast)
+  const gain = audioCtx.createGain();
+  gain.gain.value = 0.5;
 
   const bass = audioCtx.createBiquadFilter();
   bass.type = "lowshelf";
@@ -74,9 +104,24 @@ async function playSound(file) {
 
   source.connect(bass);
   bass.connect(distortion);
-  distortion.connect(audioCtx.destination);
+  distortion.connect(gain);
+  gain.connect(audioCtx.destination);
 
   source.start(0);
+
+  activeSources.push(source);
+
+  source.onended = () => {
+    activeSources = activeSources.filter(s => s !== source);
+  };
+}
+
+// stop all
+function stopAll() {
+  activeSources.forEach(source => {
+    try { source.stop(); } catch(e) {}
+  });
+  activeSources = [];
 }
 </script>
 
