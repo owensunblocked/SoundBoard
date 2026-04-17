@@ -7,7 +7,7 @@
 
 <h1>🔊 Soundboard</h1>
 
-<button onclick="playSound('chinese-gong-meme-sound-effect.mp3')">Chinease</button>
+<button onclick="playSound('chinese-gong-meme-sound-effect.mp3')">Chinese</button>
 <button onclick="playSound('airhorn.mp3')">📣 AIRHORN</button>
 <button onclick="playSound('laugh.mp3')">😂 LAUGH</button>
 
@@ -17,10 +17,22 @@
 <input type="range" id="bass" min="0" max="30" value="0"><br><br>
 
 💥 Distortion:
-<input type="range" id="distortion" min="0" max="100" value="0">
+<input type="range" id="distortion" min="0" max="100" value="0"><br><br>
+
+⏩ Speed:
+<input type="range" id="speed" min="0.5" max="2" step="0.1" value="1">
+<span id="speedValue">1x</span>
 
 <script>
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+// show speed number
+const speedSlider = document.getElementById("speed");
+const speedValue = document.getElementById("speedValue");
+
+speedSlider.oninput = () => {
+  speedValue.textContent = speedSlider.value + "x";
+};
 
 function createDistortion(amount) {
   let k = amount,
@@ -37,6 +49,7 @@ function createDistortion(amount) {
 async function playSound(file) {
   const bassVal = document.getElementById("bass").value;
   const distVal = document.getElementById("distortion").value;
+  const speedVal = document.getElementById("speed").value;
 
   const response = await fetch(file);
   const arrayBuffer = await response.arrayBuffer();
@@ -44,6 +57,9 @@ async function playSound(file) {
 
   const source = audioCtx.createBufferSource();
   source.buffer = buffer;
+
+  // speed (new)
+  source.playbackRate.value = speedVal;
 
   const bass = audioCtx.createBiquadFilter();
   bass.type = "lowshelf";
