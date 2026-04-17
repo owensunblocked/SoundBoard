@@ -18,6 +18,10 @@
 <button onclick="playSound('long-a-brain-fart-meme.mp3')">Fart meme</button>
 <button onclick="playSound('patrick-arabic-meme.mp3')">Patrick Noo</button>
 <button onclick="playSound('guitar-meme.mp3')">guitar meme</button>
+<button onclick="playSound('nae-ni-nae-nae-ni.mp3')">Racist China</button>
+<button onclick="playSound('you-order-chinese-food.mp3')">Chinese Food</button>
+<button onclick="playSound('chinese-dream.mp3')">Chinese Theme Song</button>
+<button onclick="playSound('chinese-rapping-dog.mp3')">Rap</button>
 
 <br><br>
 
@@ -55,18 +59,12 @@ const speedValue = document.getElementById("speedValue");
 const volSlider = document.getElementById("volume");
 const volValue = document.getElementById("volValue");
 
-// display values
-speedSlider.oninput = () => {
-  speedValue.textContent = speedSlider.value + "x";
-};
+speedSlider.oninput = () => speedValue.textContent = speedSlider.value + "x";
+volSlider.oninput = () => volValue.textContent = volSlider.value;
 
-volSlider.oninput = () => {
-  volValue.textContent = volSlider.value;
-};
-
-// distortion
+// better distortion (stable, not maxed out)
 function createDistortion(amount) {
-  let k = amount * 10;
+  let k = amount * 6; // 🔥 reduced strength so it doesn't always sound maxed
   let n_samples = 44100;
   let curve = new Float32Array(n_samples);
 
@@ -87,9 +85,13 @@ const soundFiles = [
   "chinese-guy-rap.mp3",
   "n-word-song.mp3",
   "long-brain-fart.mp3",
-  "long-a-fart-meme.mp3",
+  "long-a-brain-fart-meme.mp3",
   "patrick-arabic-meme.mp3",
-  "guitar-meme.mp3"
+  "guitar-meme.mp3",
+  "nae-ni-nae-nae-ni.mp3",
+  "you-order-chinese-food.mp3",
+  "chinese-dream.mp3",
+  "chinese-rapping-dog.mp3"
 ];
 
 // preload
@@ -106,7 +108,7 @@ async function loadSounds() {
 }
 loadSounds();
 
-// play
+// play sound
 async function playSound(file) {
   audioCtx.resume();
 
@@ -125,8 +127,9 @@ async function playSound(file) {
   source.buffer = buffers[file];
   source.playbackRate.value = speedVal;
 
+  // 🔊 volume FIRST (prevents distortion blowing up everything)
   const gain = audioCtx.createGain();
-  gain.gain.value = volumeVal;
+  gain.gain.value = volumeVal * 0.8; // normalized
 
   const bass = audioCtx.createBiquadFilter();
   bass.type = "lowshelf";
@@ -135,6 +138,7 @@ async function playSound(file) {
 
   let lastNode = bass;
 
+  // 💥 only apply distortion if actually needed
   if (distVal > 0) {
     const distortion = audioCtx.createWaveShaper();
     distortion.curve = createDistortion(distVal);
@@ -157,8 +161,8 @@ async function playSound(file) {
 
 // stop all
 function stopAll() {
-  activeSources.forEach(source => {
-    try { source.stop(); } catch(e) {}
+  activeSources.forEach(s => {
+    try { s.stop(); } catch(e) {}
   });
   activeSources = [];
 }
