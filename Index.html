@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Soundboard</title>
+</head>
+<body style="background:#111;color:white;text-align:center;font-family:Arial;">
+
+<h1>🔊 Soundboard</h1>
+
+<button onclick="playSound('chinese-gong-meme-sound-effect.mp3')">Chinease</button>
+<button onclick="playSound('airhorn.mp3')">📣 AIRHORN</button>
+<button onclick="playSound('laugh.mp3')">😂 LAUGH</button>
+
+<br><br>
+
+🔊 Bass:
+<input type="range" id="bass" min="0" max="30" value="0"><br><br>
+
+💥 Distortion:
+<input type="range" id="distortion" min="0" max="100" value="0">
+
+<script>
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function createDistortion(amount) {
+  let k = amount,
+      n_samples = 44100,
+      curve = new Float32Array(n_samples);
+
+  for (let i = 0; i < n_samples; i++) {
+    let x = i * 2 / n_samples - 1;
+    curve[i] = (3 + k) * x / (Math.PI + k * Math.abs(x));
+  }
+  return curve;
+}
+
+async function playSound(file) {
+  const bassVal = document.getElementById("bass").value;
+  const distVal = document.getElementById("distortion").value;
+
+  const response = await fetch(file);
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+  const source = audioCtx.createBufferSource();
+  source.buffer = buffer;
+
+  const bass = audioCtx.createBiquadFilter();
+  bass.type = "lowshelf";
+  bass.frequency.value = 200;
+  bass.gain.value = bassVal;
+
+  const distortion = audioCtx.createWaveShaper();
+  distortion.curve = createDistortion(distVal);
+
+  source.connect(bass);
+  bass.connect(distortion);
+  distortion.connect(audioCtx.destination);
+
+  source.start(0);
+}
+</script>
+
+</body>
+</html>
